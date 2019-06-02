@@ -3,4 +3,4 @@ project(compilerbook C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(compilerbook main.c)
+add_executable(compilerbook 9cc.c)
