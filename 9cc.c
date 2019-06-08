@@ -47,9 +47,27 @@ typedef struct {
 // 入力プログラム
 char *user_input;
 
-// トークナイズした結果のトークン列はこの配列に保存する
-// 100個以上のトークンは来ないものとする
-Token tokens[100];
+// トークナイズした結果のトークン列を保存する
+Vector *tokens;
+
+Token *get_token(int i) {
+    return (Token *)tokens->data[i];
+}
+
+void push_token(int ty, char *input) {
+    Token *token = malloc(sizeof(Token));
+    token->ty = ty;
+    token->input = input;
+    vec_push(tokens, token);
+}
+
+void push_token_num(int val, char *input) {
+    Token *token = malloc(sizeof(Token));
+    token->ty = TK_NUM;
+    token->val = val;
+    token->input = input;
+    vec_push(tokens, token);
+}
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -70,10 +88,10 @@ void error_at(char *loc, char *msg) {
     exit(1);
 }
 
-
 // user_inputが指している文字列を
 // トークンに分割してtokensに保存する
 void tokenize() {
+    tokens = new_vector();
     char *p = user_input;
 
     int i = 0;
@@ -85,55 +103,43 @@ void tokenize() {
         }
 
         if (strncmp(p, "==", 2) == 0) {
-            tokens[i].ty = TK_EQ;
-            tokens[i].input = p;
-            i++;
+            push_token(TK_EQ, p);
             p+=2;
             continue;
         }
         if (strncmp(p, "!=", 2) == 0) {
-            tokens[i].ty = TK_NE;
-            tokens[i].input = p;
-            i++;
+            push_token(TK_NE, p);
             p+=2;
             continue;
         }
         if (strncmp(p, "<=", 2) == 0) {
-            tokens[i].ty = TK_LE;
-            tokens[i].input = p;
-            i++;
+            push_token(TK_LE, p);
             p+=2;
             continue;
         }
         if (strncmp(p, ">=", 2) == 0) {
-            tokens[i].ty = TK_GE;
-            tokens[i].input = p;
-            i++;
+            push_token(TK_GE, p);
             p+=2;
             continue;
         }
 
         if (strchr("+-*/()<>", *p) != NULL) {
-            tokens[i].ty = *p;
-            tokens[i].input = p;
-            i++;
+            push_token(*p, p);
             p++;
             continue;
         }
 
         if (isdigit(*p)) {
-            tokens[i].ty = TK_NUM;
-            tokens[i].input = p;
-            tokens[i].val = strtol(p, &p, 10);
-            i++;
+            char *input = p;
+            int val = strtol(p, &p, 10);
+            push_token_num(val, input);
             continue;
         }
 
         error_at(p, "トークナイズできません");
     }
 
-    tokens[i].ty = TK_EOF;
-    tokens[i].input = p;
+    push_token(TK_EOF, p);
 }
 
 // ノードの型を表す値
@@ -169,7 +175,7 @@ Node *new_node_num(int val) {
 int pos = 0;
 // ノードが指定した型なら次のトークンに移動
 int consume(int ty) {
-    if (tokens[pos].ty != ty) {
+    if (get_token(pos)->ty != ty) {
         return 0;
     }
     pos++;
@@ -182,16 +188,16 @@ Node *term() {
     if (consume('(')) {
         Node *node = expr();
         if (!consume(')')) {
-            error_at(tokens[pos].input, "開きカッコに対応する閉じカッコがありません");
+            error_at(get_token(pos)->input, "開きカッコに対応する閉じカッコがありません");
         }
         return node;
     }
 
-    if (tokens[pos].ty == TK_NUM) {
-        return new_node_num(tokens[pos++].val);
+    if (get_token(pos)->ty == TK_NUM) {
+        return new_node_num(get_token(pos++)->val);
     }
 
-    error_at(tokens[pos].input, "数値でも開きカッコでもないトークンです");
+    error_at(get_token(pos)->input, "数値でも開きカッコでもないトークンです");
 }
 
 Node *unary() {
