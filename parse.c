@@ -64,6 +64,12 @@ void tokenize(char *input) {
             continue;
         }
 
+        if ('a' <= *p && *p <= 'z') {
+            push_token(TK_IDENT, p);
+            p++;
+            continue;
+        }
+
         if (strncmp(p, "==", 2) == 0) {
             push_token(TK_EQ, p);
             p+=2;
@@ -85,7 +91,7 @@ void tokenize(char *input) {
             continue;
         }
 
-        if (strchr("+-*/()<>", *p) != NULL) {
+        if (strchr("+-*/()<>=;", *p) != NULL) {
             push_token(*p, p);
             p++;
             continue;
@@ -103,6 +109,8 @@ void tokenize(char *input) {
 
     push_token(TK_EOF, p);
 }
+
+Node *code[100];
 
 // ノードの作成
 Node *new_node(int ty, Node *lhs, Node *rhs) {
@@ -131,6 +139,7 @@ int consume(int ty) {
     return 1;
 }
 
+Node *expr();
 // term := NUM | "(" expr ")"
 
 Node *term() {
@@ -144,6 +153,15 @@ Node *term() {
 
     if (get_token(pos)->ty == TK_NUM) {
         return new_node_num(get_token(pos++)->val);
+    }
+
+    if (get_token(pos)->ty == TK_IDENT) {
+        char varname = get_token(pos++)->input[0];
+
+        Node *node = malloc(sizeof(Node));
+        node->ty = ND_LVAR;
+        node->offset = (varname - 'a' + 1) * 8;
+        return node;
     }
 
     error_at(get_token(pos)->input, "数値でも開きカッコでもないトークンです");
@@ -223,6 +241,30 @@ Node *equality() {
     }
 }
 
+Node *assign() {
+    Node *node = equality();
+    if (consume('=')) {
+        node = new_node('=', node, assign());
+    }
+    return node;
+}
+
 Node *expr() {
-    return equality();
+    return assign();
+}
+
+Node *stmt() {
+    Node *node = expr();
+    if (!consume(';')) {
+        error_at(get_token(pos)->input, "';'ではないトークンです");
+    }
+    return node;
+}
+
+void program() {
+    int i = 0;
+    while (get_token(pos)->ty != TK_EOF) {
+        code[i++] = stmt();
+    }
+    code[i] = NULL;
 }

@@ -17,6 +17,7 @@ void runtest();
 // トークンの型を表す値
 enum {
     TK_NUM = 256,   // 整数
+    TK_IDENT,       // 識別子
     TK_EQ,          // ==
     TK_NE,          // !=
     TK_LE,          // <=
@@ -34,6 +35,7 @@ typedef struct {
 // ノードの型を表す値
 enum {
     ND_NUM = 256,   // 整数のノードの型
+    ND_LVAR,        // ローカル変数のノードの型
 };
 
 // ノードの型
@@ -42,11 +44,16 @@ typedef struct Node {
     struct Node *lhs;   // 左辺
     struct Node *rhs;   // 右辺
     int val;            // tyがND_NUMの場合のみ使う
+    int offset;         // tyがND_LVARの場合のみ使う
 } Node;
+
+void error(char *fmt, ...);
 
 // 入力文字列をトークンに分割してtokensに保存する
 void tokenize(char *input);
 
-Node *expr();
+extern Node *code[];
+
+void program();
 
 void gen(Node *node);
